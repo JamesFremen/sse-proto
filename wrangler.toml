@@ -1,0 +1,7 @@
+name = "async-iterator-queue-proto"
+main = "src/index.ts"
+compatibility_date = "2024-01-29"
+compatibility_flags = [ "nodejs_compat" ]
+
+[[queues.consumers]]
+queue = "my-queue"
