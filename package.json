@@ -1,5 +1,5 @@
 {
-  "name": "async-iterator-queue-proto",
+  "name": "sse-proto",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240208.0",
     "typescript": "^5.3.3",
-    "wrangler": "^3.28.3"
+    "wrangler": "^3.28.4"
   },
   "dependencies": {
     "@cloudflare/itty-router-openapi": "^1.0.10",

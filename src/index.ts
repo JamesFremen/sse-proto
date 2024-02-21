@@ -1,10 +1,14 @@
-import { error } from 'itty-router';
+import { error, createCors } from 'itty-router';
 import { OpenAPIRouter, OpenAPIRoute } from '@cloudflare/itty-router-openapi';
-import { createCors } from 'itty-router';
+import { EventEmitter, on } from 'node:events'
 
 export interface Env {
 	MY_QUEUE: Queue;
 }
+
+const eventEmitter = new EventEmitter({ captureRejections: true });
+
+const topic = 'item-added'
 
 export class SSESubscribe extends OpenAPIRoute {
 	static schema = {
@@ -26,13 +30,27 @@ export class SSESubscribe extends OpenAPIRoute {
 		const writer = writable.getWriter();
 		const encoder = new TextEncoder();
 
+		/* 
+		// This works in the local wrangler dev environment, but not in the cloudflare worker environment,
+		// probably because it uses setInterval.
 		setInterval(() => {
 			console.log('sending message...');
 			const msg = 'data: { "info": "some info", "source": "some source" }\n\n';
 			writer.write(encoder.encode(msg));
-		}, 5000);
+		}, 5000);		
+		*/
+		
+		const asyncIterator = on(eventEmitter, topic)
+		console.log(`awaiting '${topic}'...`)
+		for await (const [value] of asyncIterator) {
+			for (const v of value) {
+				console.log(`received ${topic} with payload ${v}. Writing to encoder...`);
+				writer.write(encoder.encode(v));
+			}
+		}
 
 		const headers = {
+			'Access-Control-Allow-Origin': '*',
 			'Content-Type': 'text/event-stream',
 			Connection: 'keep-alive',
 			'Cache-Control': 'no-cache, no-transform',
@@ -40,35 +58,6 @@ export class SSESubscribe extends OpenAPIRoute {
 		return new Response(readable, { headers });
 	}
 }
-
-/*
-const eventEmitter = new EventEmitter({ captureRejections: true });
-
-const createPubSub = <TTopicPayload extends { [key: string]: unknown }>() => {
-	return {
-		publish: <TTopic extends Extract<keyof TTopicPayload, string>>(
-			topic: TTopic,
-			payload: TTopicPayload[TTopic]
-		) => {
-			console.log(`emitting topic '${topic}' with payload '${JSON.stringify(payload)}'`)
-			const hasSubscribers = eventEmitter.emit(topic as string, payload)
-			console.log(`emitted topic '${topic}' with payload '${JSON.stringify(payload)}' hasSubscribers: ${hasSubscribers}`)
-		},
-		subscribe: async function* <TTopic extends Extract<keyof TTopicPayload, string>>(
-			topic: TTopic
-		): AsyncIterableIterator<TTopicPayload[TTopic]> {
-			console.log(`getting async iterator for topic '${topic}'`)
-			const asyncIterator = on(eventEmitter, topic)
-			console.log(`awaiting '${topic}'...`)
-			for await (const [value] of asyncIterator) {
-				console.log(`received ${topic} with payload ${JSON.stringify(value)}`);
-				yield value
-			}
-		}
-	}
-}
-const pubsub = createPubSub();
-*/
 
 const router = OpenAPIRouter();
 const { preflight, corsify } = createCors();
@@ -83,9 +72,11 @@ export default {
 		return router.handle(request, env, ctx).then(corsify);
 	},
 	async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
+		console.log('queue received a message batch')
 		for (let message of batch.messages) {
 			console.log(`publishing message ${message.id} processed: ${JSON.stringify(message.body)}`);
-			//await pubsub.publish('item-added', message.body);
+			const msg = 'data: { "info": "some info", "source": "some source" }\n\n';
+			eventEmitter.emit('item-added', msg);
 		}
 	},
 };
