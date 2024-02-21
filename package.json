@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "start": "wrangler dev"
+    "dev": "wrangler dev"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240208.0",
@@ -13,7 +12,6 @@
     "wrangler": "^3.28.4"
   },
   "dependencies": {
-    "@cloudflare/itty-router-openapi": "^1.0.10",
-    "events": "^3.3.0"
+    "@cloudflare/itty-router-openapi": "^1.0.10"
   }
 }
